@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家計簿</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2ee;
+    --paper: #fdfcfa;
+    --ink: #1a1714;
+    --ink-light: #7a736b;
+    --accent: #c84b2f;
+    --line: #e8e3db;
+    --green: #2d6a4f;
+  }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    color: var(--ink);
+  }
+
+  .header {
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .title {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--ink-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .nav-btn:hover:not(:disabled) { border-color: var(--ink-light); color: var(--ink); }
+  .nav-btn:disabled { opacity: 0.2; cursor: default; }
+
+  .month-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    min-width: 110px;
+    text-align: center;
+  }
+  .month-label.current { color: var(--ink); }
+  .month-label.past { color: var(--ink-light); }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    width: 100%;
+    max-width: 520px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .entries-header {
+    display: grid;
+    grid-template-columns: 140px 1fr 36px;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 12px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink-light);
+    text-transform: uppercase;
+  }
+
+  .entry-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 36px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .entry-date-input {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 13px !important;
+    color: var(--ink-light) !important;
+  }
+
+  input[type="text"], input[type="number"] {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 6px 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="number"] {
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+  }
+  input:focus { border-bottom-color: var(--accent); }
+  input::placeholder { color: #c8c0b5; }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--line);
+    font-size: 16px;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+    text-align: center;
+  }
+  .delete-btn:hover { color: var(--accent); }
+
+  .add-btn {
+    width: 100%;
+    max-width: 520px;
+    background: none;
+    border: 1px dashed var(--line);
+    padding: 12px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--ink-light);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+  }
+  .add-btn:hover { border-color: var(--ink-light); color: var(--ink); }
+
+  .summary-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    width: 100%;
+    max-width: 520px;
+    overflow: hidden;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--line);
+  }
+  .summary-row:last-child { border-bottom: none; }
+
+  .summary-label {
+    font-size: 13px;
+    color: var(--ink-light);
+    letter-spacing: 0.04em;
+  }
+
+  .summary-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  .summary-row.budget .summary-value { color: var(--ink-light); }
+  .summary-row.refund-row { background: #faf8f5; }
+
+  .refund-input-wrap { display: flex; align-items: center; gap: 4px; }
+
+  .refund-prefix {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    color: var(--ink-light);
+  }
+
+  .refund-input {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--green);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    width: 120px;
+    text-align: right;
+    outline: none;
+    padding: 2px 0;
+    transition: border-color 0.2s;
+  }
+  .refund-input:focus { border-bottom-color: var(--green); }
+  .refund-input::placeholder { color: #c8c0b5; font-size: 14px; }
+
+  .summary-row.diff { background: var(--ink); }
+  .summary-row.diff .summary-label { color: #8a8078; }
+  .summary-row.diff .summary-value.positive { color: var(--green); }
+  .summary-row.diff .summary-value.negative { color: var(--accent); }
+
+  .bar-wrap {
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 16px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+
+  .description-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink-light);
+    border-radius: 2px;
+    padding: 18px 24px;
+    margin-bottom: 28px;
+  }
+
+  .desc-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+
+  .desc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .desc-list li {
+    font-size: 12px;
+    color: var(--ink-light);
+    line-height: 1.6;
+    padding-left: 12px;
+    position: relative;
+  }
+
+  .desc-list li::before {
+    content: '–';
+    position: absolute;
+    left: 0;
+    color: var(--line);
+  }
+
+  .desc-list strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="title">育休期間中の おこづかい補助サイト</span>
+  <div class="month-nav">
+    <button class="nav-btn" id="prevBtn" onclick="changeMonth(-1)">&#8592;</button>
+    <span class="month-label current" id="monthLabel"></span>
+    <button class="nav-btn" id="nextBtn" onclick="changeMonth(1)">&#8594;</button>
+  </div>
+</div>
+
+<div class="description-card">
+  <p class="desc-title">ルール</p>
+  <ul class="desc-list">
+    <li>月に <strong>50,000円</strong>、太陽 → 愛華音 へ予算配分</li>
+    <li>モバイルICOCAにチャージした金額をこのサイトに記載</li>
+    <li>月末に差分（例：¥50,000 − ICOCAチャージ ¥20,000 ＝ <strong>¥30,000</strong>）は現金で返金</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="entries-header">
+    <span>日付</span>
+    <span style="text-align:right">金額</span>
+    <span></span>
+  </div>
+  <div id="entryList"></div>
+</div>
+
+<button class="add-btn" onclick="addEntry()">＋ 項目を追加</button>
+
+<div style="width:100%;max-width:520px;text-align:right;margin-top:-18px;margin-bottom:20px;">
+  <span id="syncStatus" style="font-size:11px;letter-spacing:0.05em;color:var(--ink-light);"></span>
+</div>
+
+<div class="bar-wrap"><div class="bar-fill" id="progressBar"></div></div>
+
+<div class="summary-card">
+  <div class="summary-row budget">
+    <span class="summary-label">予算</span>
+    <span class="summary-value">¥50,000</span>
+  </div>
+  <div class="summary-row">
+    <span class="summary-label">今月使用合計</span>
+    <span class="summary-value" id="totalSpent">¥0</span>
+  </div>
+  <div class="summary-row refund-row">
+    <span class="summary-label">現金返金</span>
+    <div class="refund-input-wrap">
+      <span class="refund-prefix">¥</span>
+      <input class="refund-input" type="number" id="refundInput" placeholder="0" min="0" oninput="onRefundInput()">
+    </div>
+  </div>
+  <div class="summary-row diff">
+    <span class="summary-label">差分</span>
+    <span class="summary-value" id="diffValue">¥50,000</span>
+  </div>
+</div>
+
+<script>
+  const BUDGET = 50000;
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbye15RUXVaRwpdJzYSdIHTCrfbV2KCj5lAXBDq4wY959FBVErnmSSHNgdXq4pnguZYQNw/exec';
+
+  const allData = {};
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+
+  let viewYear = todayYear;
+  let viewMonth = todayMonth;
+  let saving = false;
+
+  function monthKey(y, m) {
+    return `${y}${String(m + 1).padStart(2, '0')}`;
+  }
+
+  function getMonthData(y, m) {
+    const key = monthKey(y, m);
+    if (!allData[key]) allData[key] = { entries: [], refund: '', nextId: 1, loaded: false };
+    return allData[key];
+  }
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function defaultDateForMonth(y, m) {
+    if (y === todayYear && m === todayMonth) return todayStr();
+    return `${y}${String(m+1).padStart(2,'0')}01`;
+  }
+
+  function formatYen(n) {
+    return '¥' + n.toLocaleString('ja-JP');
+  }
+
+  function isCurrentMonth() {
+    return viewYear === todayYear && viewMonth === todayMonth;
+  }
+
+  function updateHeader() {
+    const label = document.getElementById('monthLabel');
+    label.textContent = `${viewYear}年${viewMonth + 1}月`;
+    label.className = 'month-label ' + (isCurrentMonth() ? 'current' : 'past');
+    document.getElementById('nextBtn').disabled = isCurrentMonth();
+  }
+
+  // ---- GAS 通信 ----
+
+  function setStatus(msg, color) {
+    const el = document.getElementById('syncStatus');
+    el.textContent = msg;
+    el.style.color = color || 'var(--ink-light)';
+  }
+
+  async function fetchAllData() {
+    setStatus('読み込み中…');
+    try {
+      const res = await fetch(GAS_URL);
+      const rows = await res.json();
+      // rows: [{month, date, amount, refund}, ...]
+      rows.forEach(row => {
+        const key = String(row.month);
+        if (!allData[key]) allData[key] = { entries: [], refund: '', nextId: 1, loaded: true };
+        const d = allData[key];
+        const id = d.nextId++;
+        d.entries.push({ id, date: String(row.date), amount: String(row.amount || '') });
+        if (row.refund) d.refund = String(row.refund);
+        d.loaded = true;
+      });
+      setStatus('');
+    } catch(e) {
+      setStatus('読み込み失敗', 'var(--accent)');
+    }
+    loadMonth();
+  }
+
+  async function saveMonth() {
+    if (saving) return;
+    saving = true;
+    setStatus('保存中…');
+    const key = monthKey(viewYear, viewMonth);
+    const data = getMonthData(viewYear, viewMonth);
+    const payload = {
+      action: 'save',
+      month: key,
+      entries: data.entries.map(e => ({ date: e.date, amount: e.amount })),
+      refund: data.refund || ''
+    };
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      setStatus('保存済み ✓', 'var(--green)');
+      setTimeout(() => setStatus(''), 2000);
+    } catch(e) {
+      setStatus('保存失敗', 'var(--accent)');
+    }
+    saving = false;
+  }
+
+  // 入力が止まってから1秒後に保存
+  let saveTimer = null;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveMonth, 1000);
+  }
+
+  // ---- 月切替 ----
+
+  function changeMonth(delta) {
+    viewMonth += delta;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+    loadMonth();
+  }
+
+  function loadMonth() {
+    updateHeader();
+    const data = getMonthData(viewYear, viewMonth);
+    document.getElementById('refundInput').value = data.refund || '';
+    renderEntries();
+    recalc();
+  }
+
+  // ---- CRUD ----
+
+  function addEntry() {
+    const data = getMonthData(viewYear, viewMonth);
+    const id = data.nextId++;
+    data.entries.push({ id, date: defaultDateForMonth(viewYear, viewMonth), amount: '' });
+    renderEntries();
+    recalc();
+    scheduleSave();
+  }
+
+  function removeEntry(id) {
+    const data = getMonthData(viewYear, viewMonth);
+    data.entries = data.entries.filter(e => e.id !== id);
+    renderEntries();
+    recalc();
+    scheduleSave();
+  }
+
+  function renderEntries() {
+    const data = getMonthData(viewYear, viewMonth);
+    const list = document.getElementById('entryList');
+    list.innerHTML = '';
+    data.entries.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      row.innerHTML = `
+        <input type="text" class="entry-date-input" placeholder="20250301" value="${e.date}" oninput="updateDate(${e.id}, this.value)">
+        <input type="number" placeholder="10000" value="${e.amount}" min="0" style="text-align:right" oninput="updateAmount(${e.id}, this.value)">
+        <button class="delete-btn" onclick="removeEntry(${e.id})">×</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function updateDate(id, val) {
+    const data = getMonthData(viewYear, viewMonth);
+    const e = data.entries.find(x => x.id === id);
+    if (e) { e.date = val; scheduleSave(); }
+  }
+
+  function updateAmount(id, val) {
+    const data = getMonthData(viewYear, viewMonth);
+    const e = data.entries.find(x => x.id === id);
+    if (e) { e.amount = val; recalc(); scheduleSave(); }
+  }
+
+  function onRefundInput() {
+    const data = getMonthData(viewYear, viewMonth);
+    data.refund = document.getElementById('refundInput').value;
+    recalc();
+    scheduleSave();
+  }
+
+  function recalc() {
+    const data = getMonthData(viewYear, viewMonth);
+    const total = data.entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const refund = parseFloat(document.getElementById('refundInput').value) || 0;
+    const diff = BUDGET - (total + refund);
+
+    document.getElementById('totalSpent').textContent = formatYen(total);
+
+    const diffEl = document.getElementById('diffValue');
+    diffEl.textContent = formatYen(diff);
+    diffEl.className = 'summary-value ' + (diff >= 0 ? 'positive' : 'negative');
+
+    const pct = Math.min((total + refund) / BUDGET * 100, 100);
+    const bar = document.getElementById('progressBar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 90 ? '#c84b2f' : pct > 70 ? '#e07b3a' : '#2d6a4f';
+  }
+
+  // Init: スプレッドシートから全データ取得
+  fetchAllData();
+</script>
+</body>
+</html>
